@@ -1,6 +1,6 @@
 ---
 name: ra-exporter
-description: "LEET 추리논증 문항 JSON을 hwpx(한컴) / docx로 출력 — python-hwpx 기반 배치 + hwpx MCP 서버 기반 인터랙티브 편집 지원"
+description: "LEET 추리논증 문항 JSON을 시대인재 양식 hwpx로 출력 — default(26추리) / jeonguk(전국) / serva(서바) 3종 양식 + MCP 인터랙티브 편집"
 triggers:
   - "hwpx로"
   - "hwp로"
@@ -13,29 +13,107 @@ triggers:
   - "export"
   - "exporter"
   - "문제지 만들어줘"
-argument-hint: "(review 통과한 문항 JSON)"
+  - "서바 양식"
+  - "전국 양식"
+  - "서바로"
+  - "전국으로"
+  - "모의고사 양식"
+  - "시대인재 양식"
+argument-hint: "<양식> (default | jeonguk | serva)"
 requires: ["omc"]
 ---
 
-# RA-EXPORTER: 문항 → hwpx / docx 출력기
+# RA-EXPORTER: 문항 → hwpx 출력기 (시대인재 3종 양식)
 
 **OMC 전제.** 두 경로 지원:
 
-1. **배치 출력 (기본)** — `leet_ra/exporter/export_hwpx.py` 가 **시대인재 양식 hwpx 템플릿을 복제 → 본문 XML 비우기(`sections[0].element` children clear) → 시대인재 스타일명으로 문단 삽입** 방식으로 문제지/해설지를 동시 생성한다. 기본 출력 2개:
-   - `output/<레이블>_문제지.hwpx` (27추리_출제 양식 템플릿 기반)
-   - `output/<레이블>_해설지.hwpx` (전국&서바 해설지 템플릿 기반)
+1. **배치 출력 (기본)** — `leet_ra/exporter/export_hwpx.py`가 **빈 템플릿**(시대인재 실제 제작본에서 `<hp:t>` 텍스트만 제거한 파일)을 복제 후 본문에 우리 문항을 스타일 적용하여 추가한다. 표·2단 컬럼·바탕쪽·헤더·스타일 세트 유지.
 2. **인터랙티브 편집 (선택)** — 프로젝트 `.mcp.json`에 등록된 `hwpx` MCP 서버(33개 도구)로 Claude가 직접 문서 조작. 표 셀 편집, 특정 문구 교체, 양식 폼 채우기 등에 유용.
 
-## 템플릿 파일
+## When to Activate
 
-| 용도 | 경로 | 베이스 원본 |
-|------|------|-----------|
-| 문제지 | `leet_ra/templates/문제지_템플릿.hwpx` | `27추리_출제 양식_260206.hwpx` |
-| 해설지 | `leet_ra/templates/해설지_템플릿.hwpx` | `전국&서바_해설지.hwpx` |
+- ra-review 판정 ❌ 0개 통과 후 문제지 출력 요청
+- "hwpx로 뽑아줘", "한글로 출력", "문제지 만들어줘", "서바 양식으로", "전국 양식으로" 등
+- 풀 파이프라인의 마지막 단계
+
+## 전제 조건
+
+- `pip install python-hwpx hwpx-mcp-server python-docx` (또는 `bash setup.sh`)
+- 문항 JSON 스키마: `question_number`, `domain`, `stem`, `passage_text`, `has_bogie`, `bogie_items`, `choices`, `answer`, `explanations`, `w_codes_used`
+- review ❌ 존재 시 export 금지
+- 빈 템플릿 파일(`leet_ra/templates/*_빈.hwpx`) 존재 — 없으면 `python3 leet_ra/exporter/build_blank_template.py` 실행하여 재생성
+
+## 양식 선택 (3종)
+
+사용자 자연어에서 양식을 자동 판별한 뒤 `--format`으로 전달:
+
+| 자연어 | `--format` | 문제지 템플릿 | 해설지 템플릿 |
+|--------|-----------|-------------|-------------|
+| (명시 없음) · "시대인재 양식" | `default` | `templates/시대인재_문제지_빈.hwpx` (84KB) | `templates/시대인재_해설지_빈.hwpx` (50KB) |
+| "전국 양식" · "전국으로" · "전국 모의고사" | `jeonguk` | `templates/전국_문제지_빈.hwpx` (366KB) | `templates/전국서바_해설지_빈.hwpx` (61KB) |
+| "서바 양식" · "서바로" · "서바이벌" | `serva` | `templates/서바_문제지_빈.hwpx` (366KB) | `templates/전국서바_해설지_빈.hwpx` (61KB) |
+
+**판별 규칙**: "서바" 단어가 있으면 `serva`, "전국" 단어가 있으면 `jeonguk`, 그 외는 `default`.
+
+## Workflow
+
+### 경로 1: 배치 출력 (기본)
+
+```bash
+# 기본 양식 (26추리 간결)
+python3 leet_ra/exporter/export_hwpx.py \
+  --input <questions.json> \
+  --format default \
+  --title "<사용자 지정 제목>"
+
+# 전국 모의고사
+python3 leet_ra/exporter/export_hwpx.py -i <json> -f jeonguk -t "<제목>"
+
+# 서바이벌
+python3 leet_ra/exporter/export_hwpx.py -i <json> -f serva -t "<제목>"
+
+# docx 대체 출력 (옵션)
+python3 leet_ra/exporter/export_docx.py -i <json> -o output/<레이블>.docx -t "<제목>"
+```
+
+기본 출력 경로: `output/문제지_<format>.hwpx`, `output/해설지_<format>.hwpx`.
+경로 오버라이드: `--output-problem`, `--output-solution`.
+템플릿 직접 지정: `--problem-template`, `--solution-template` (우선순위 높음).
+
+### 경로 2: MCP 서버로 인터랙티브 편집
+
+`.mcp.json`이 레포 루트에 있어 `claude` 실행 시 자동 등록. 도구 prefix `mcp__hwpx__*`.
+
+주요 도구 (33개 중 핵심):
+
+| 도구 | 용도 |
+|------|------|
+| `create_document` / `add_heading` / `add_paragraph` / `add_table` | 새 hwpx 구축 |
+| `search_and_replace` / `batch_replace` | 텍스트 치환 (스타일 보존) |
+| `set_table_cell_text` / `get_table_text` | 표 셀 읽기/쓰기 |
+| `fill_by_path` / `find_cell_by_label` | 한국 양식/폼 자동 채우기 |
+| `get_document_info` / `get_document_text` / `get_document_outline` | 조회 |
+| `hwpx_to_markdown` / `hwpx_to_html` / `hwpx_extract_json` | 역변환 |
+| `insert_paragraph` / `delete_paragraph` / `add_page_break` / `add_memo` | 국소 편집 |
+
+**인터랙티브 시나리오**:
+```
+사용자: "output/문제지_serva.hwpx 3번 문항 해설 바꿔줘 — 정답을 ④로"
+→ Claude: mcp__hwpx__search_and_replace 로 해당 문구 치환
+```
+
+## 빈 템플릿 생성 방식
+
+`leet_ra/exporter/build_blank_template.py`:
+- ZIP+XML 수준에서 `<hp:t>...</hp:t>` 내부 텍스트를 정규식으로 일괄 제거
+- 표/2단 컬럼/바탕쪽/헤더/스타일 세트 그대로 유지
+- 한 번 실행 후 결과물(`templates/*_빈.hwpx`)을 레포에 커밋해둠
+
+재생성 필요 시: `python3 leet_ra/exporter/build_blank_template.py`
 
 ## 시대인재 스타일 자동 매핑
 
-exporter는 `build_style_map()`으로 템플릿 hwpx 내부 `header.xml`에서 style name → id 매핑을 빌드한 뒤 다음 스타일명으로 `add_paragraph(text, style_id_ref=...)` 호출:
+exporter는 `build_style_map()`으로 템플릿 hwpx의 `header.xml`에서 style name → id 매핑을 빌드 후 다음 스타일명으로 `add_paragraph(text, style_id_ref=...)` 호출:
 
 | 블록 | 문제지 스타일 | 해설지 스타일 |
 |------|------------|-------------|
@@ -51,113 +129,19 @@ exporter는 `build_style_map()`으로 템플릿 hwpx 내부 `header.xml`에서 s
 ## 교열 매뉴얼(추리논증ver) 자동 반영
 
 - **묶음 빈 칸(U+2060)**: 문항 번호↔발문, `①②③④⑤`↔내용, `ㄱ./ㄴ./ㄷ.`↔내용 자동 삽입
-- **고정폭 빈 칸(U+00A0)**: 필요 시 삽입 (컴포저 함수로 확장 가능)
+- **고정폭 빈 칸(U+00A0)**: 컴포저 함수 상수로 준비
 - **들여쓰기**: 공백 아닌 스타일(`박스내용(들여쓰기)`, `보기내용(내어쓰기)`)로 처리
-- **선지와 내용 사이 공백**: 원본 `'① ㄱ'` → `'①⁠ㄱ'` (묶음 빈 칸)으로 치환
-- 추가 규정 치환(`아니한다→않는다`, `만 원` 띄어쓰기)은 후속 `compose_*` 함수로 확장 가능
-
-## When to Activate
-
-- ra-review 판정 ❌ 0개 통과 후 문제지 출력 요청
-- "hwpx로 뽑아줘", "한글로 출력", "문제지 만들어줘" 등
-- 풀 파이프라인의 마지막 단계
-
-## 전제 조건
-
-- `pip install python-hwpx hwpx-mcp-server` 완료
-- 문항 JSON 스키마: `question_number`, `domain`, `stem`, `passage_text`, `has_bogie`, `bogie_items`, `choices`, `answer`, `explanations`, `w_codes_used`
-- review ❌ 존재 시 export 금지
-
-## Workflow
-
-### 경로 1: 배치 출력 (기본 추천)
-
-review 통과한 문항 세트를 한 번에 파일로 내보낸다.
-
-```bash
-python3 leet_ra/exporter/export_hwpx.py \
-  --input <questions.json> \
-  --output output/<레이블>_문제지.hwpx \
-  --title "<사용자 지정 제목>"
-
-python3 leet_ra/exporter/export_docx.py \
-  --input <questions.json> \
-  --output output/<레이블>_문제지.docx \
-  --title "<사용자 지정 제목>"
-```
-
-결과 파일 경로를 사용자에게 반환.
-
-### 경로 2: MCP 서버로 인터랙티브 편집
-
-`.mcp.json`이 레포 루트에 있으므로 `claude` 실행 시 자동 등록. 도구 prefix는 `mcp__hwpx__*`.
-
-주요 도구:
-
-| 도구 | 용도 |
-|------|------|
-| `create_document` | 새 HWPX 문서 생성 |
-| `add_heading` | 제목/헤딩 추가 (level 1~6) |
-| `add_paragraph` | 문단 추가 |
-| `add_table` | 표 추가 (data 2D 배열) |
-| `set_table_cell_text` | 표 셀 텍스트 변경 |
-| `search_and_replace` | 텍스트 치환 (스타일 보존) |
-| `batch_replace` | 여러 문구 순차 치환 |
-| `fill_by_path` | `성명 > right` 같은 경로 문법으로 폼 칸 채움 |
-| `find_cell_by_label` | 라벨 인접 셀 탐지 (한국 양식/템플릿용) |
-| `hwpx_to_markdown` / `hwpx_to_html` / `hwpx_extract_json` | 역변환 |
-| `get_document_info` / `get_document_text` / `get_document_outline` | 조회 |
-| `insert_paragraph` / `delete_paragraph` | 위치 지정 문단 조작 |
-| `add_page_break` / `add_memo` / `remove_memo` | 페이지/메모 |
-
-**인터랙티브 시나리오 예**:
-```
-사용자: "output/leet_v2_real.hwpx 3번 문항 해설을 교열해줘"
-→ Claude: mcp__hwpx__search_and_replace 로 해당 부분 치환
-```
-
-## 출력 구성
-
-각 문항은 다음 순서로 렌더링:
-
-```
-N. [영역] 발문
-<지문>
-(지문 본문)
-
-<보기>
-ㄱ. …
-ㄴ. …
-ㄷ. …
-
-①
-②
-③
-④
-⑤
-
-[정답] N
-[해설]
-ㄱ) …
-ㄴ) …
-ㄷ) …
-```
+- **선지 공백**: `'① ㄱ'` → `'①⁠ㄱ'` 자동 치환
+- 추가 치환(`아니한다→않는다`, `만 원` 띄어쓰기)은 후속 `compose_*` 함수로 확장 가능
 
 ## 품질 체크
 
 - 출력 파일 존재 + 크기 > 0
-- `python-hwpx`의 `HwpxDocument.open()` + `export_text()`로 readback 검증
+- `HwpxDocument.open()` + `export_text()`로 readback
 - 문항 수가 입력 JSON과 일치
 
 ## 주의 사항
 
-- **hwpx는 python-hwpx `HwpxDocument.new()` 기반.** 한컴오피스에서 바로 열림 (Open XML 표준 준수).
-- 시대인재 양식의 **스타일(폰트/여백/2단 컬럼/표 테두리)까지 완벽 재현은 아님**. 한컴에서 열어 스타일 후처리 필요.
-- 완벽 재현을 원하면 `leet_ra/templates/시대인재_문제지.hwpx` (한컴에서 변환해둔 실물 템플릿)를 배치하고 `search_and_replace` / `fill_by_path` MCP 도구로 슬롯 치환 방식으로 확장 가능.
+- 빈 템플릿은 "본문 텍스트만 제거"된 상태. 앞쪽에 시대인재 양식의 빈 표/레이아웃 슬롯이 그대로 있고, 그 뒤에 우리 문항이 스타일 적용되어 추가됨. 필요 시 한컴에서 후처리.
 - review 미통과 문항 export 금지.
-
-## Notes
-
-- 출력 디렉터리: `output/` (gitignore — 생성물 커밋 X)
-- MCP 서버 실행: `hwpx-mcp-server --transport stdio` (자동, `.mcp.json` 참조)
-- 문제 발생 시 `pip install --upgrade python-hwpx hwpx-mcp-server`
+- MCP 서버가 뜨지 않으면 `pip install --upgrade python-hwpx hwpx-mcp-server` 후 `claude` 재시작.

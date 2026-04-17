@@ -21,8 +21,15 @@ import zipfile
 from pathlib import Path
 
 SOURCES = [
+    # default (26추리 실제 제작본 기반 — 기본 양식)
     ("leet_ra/data/26추리_전국_07회_문제.hwpx", "leet_ra/templates/시대인재_문제지_빈.hwpx"),
     ("leet_ra/data/26추리_전국_07회_해설.hwpx", "leet_ra/templates/시대인재_해설지_빈.hwpx"),
+    # 전국 모의고사 양식 (전국_문제지.hwpx)
+    ("leet_ra/data/전국_문제지.hwpx", "leet_ra/templates/전국_문제지_빈.hwpx"),
+    # 서바이벌 모의고사 양식 (서바_문제지.hwpx)
+    ("leet_ra/data/서바_문제지.hwpx", "leet_ra/templates/서바_문제지_빈.hwpx"),
+    # 공용 해설지 양식 (전국&서바 공용)
+    ("leet_ra/data/전국&서바_해설지.hwpx", "leet_ra/templates/전국서바_해설지_빈.hwpx"),
 ]
 
 # <hp:t ...>...</hp:t> / <hp:t/> 형태 — ns prefix 는 hp 고정 (시대인재 hwpx 확인)

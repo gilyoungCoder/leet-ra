@@ -45,7 +45,7 @@ requires: ["omc"]
 | ra-analyze | 동일 유형 기출 2개 전체 구조 + W코드 21종 메타 + `taxonomy.md` | 사전 유형 추정 → 매칭 leet_type의 questions |
 | ra-design | analyze W코드 후보별 examples 2개씩 + 선지 구성 규칙 16개 + AP/CP 패턴 | **타깃 W코드에만** 매칭 (21개 전체 뿌리지 않음) |
 | ra-review | 동일 leet_type 고품질 기출 1~2개 + W코드 진단 카탈로그 + 16규칙 체크리스트 | 기대 수준 비교 + Rule별 검증 |
-| ra-exporter | (RAG 불필요. Bash로 `leet_ra/exporter/export_hwpx.py`/`export_docx.py` 실행) | review ✅ 문항 JSON → hwpx + docx 파일 출력 |
+| ra-exporter | (RAG 불필요. Bash로 `leet_ra/exporter/export_hwpx.py` 실행) | review ✅ 문항 JSON → 시대인재 3종 양식 hwpx (default/jeonguk/serva) + docx |
 
 **가중치 원칙 90/10**: 2025 기출 우선, 2024는 보충.
 
@@ -74,8 +74,21 @@ requires: ["omc"]
          ↓
   ❌ 0개 → 확정 / ❌ 있음 → 해당 단계로 루프
          ↓ (확정 후, 출력 요청 시)
-  ra-exporter — Bash로 export_hwpx.py / export_docx.py 실행 → output/*.hwpx + output/*.docx
+  ra-exporter — "서바/전국/기본" 양식 자동 판별 → export_hwpx.py --format {default|jeonguk|serva}
+               → output/문제지_<fmt>.hwpx + output/해설지_<fmt>.hwpx
 ```
+
+## 양식 선택 (ra-exporter 전용)
+
+사용자 자연어에서 양식 자동 판별:
+
+| 자연어 | 양식 |
+|--------|------|
+| "서바 양식" / "서바로" | `serva` (서바이벌 모의고사) |
+| "전국 양식" / "전국으로" | `jeonguk` (전국 모의고사) |
+| 그 외 / "시대인재 양식" / 명시 없음 | `default` (26추리 실제 제작본 기반) |
+
+자세한 매핑·스타일·교열 규칙은 `.omc/skills/ra-exporter/SKILL.md` 참조.
 
 ### Step 2: 각 에이전트 spawn은 하위 스킬 위임
 

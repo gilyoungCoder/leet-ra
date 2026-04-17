@@ -1,10 +1,10 @@
 """
-LEET-RA hwpx 출력기 — 시대인재 템플릿 기반 (v3 구현).
+LEET-RA hwpx 출력기 — 시대인재 3종 양식 (default/jeonguk/serva).
 
-실제 시대인재 LEET 양식 hwpx(`leet_ra/templates/문제지_템플릿.hwpx`,
-`leet_ra/templates/해설지_템플릿.hwpx`)를 베이스로 복사하고, 문항 JSON의
+실제 시대인재 LEET hwpx에서 본문 텍스트만 비운 '빈 템플릿'
+(`leet_ra/templates/*_빈.hwpx`)을 양식별로 복제하고, 문항 JSON의
 내용을 시대인재 스타일명(예: '문제', '선택지', '보기박스',
-'보기내용(내어쓰기)', '지문 (테두리)', '박스내용(들여쓰기)')으로 삽입한다.
+'보기내용(내어쓰기)', '지문 (테두리)', '박스내용(들여쓰기)')으로 추가한다.
 
 교열 매뉴얼(추리논증ver)의 핵심 규칙 중 자동 처리 가능한 것을 반영한다:
 - 문항 번호와 발문 사이는 '묶음 빈 칸'(U+2060 WORD JOINER) 삽입
@@ -40,10 +40,28 @@ U_NBSP = "\u00A0"          # 고정폭 빈 칸 (Alt+Space 대응)
 # 선지 원문자
 CHOICE_MARKS = ("①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩")
 
-DEFAULT_TEMPLATES = {
-    "problem": "leet_ra/templates/시대인재_문제지_빈.hwpx",
-    "solution": "leet_ra/templates/시대인재_해설지_빈.hwpx",
+# 양식(format) 별 템플릿 매핑 — '서바 양식으로 뽑아줘' / '전국 양식으로 뽑아줘' 등 자연어 트리거가
+# ra-exporter 스킬을 거쳐 --format으로 도달한다.
+FORMAT_TEMPLATES: dict[str, dict[str, str]] = {
+    # 26추리 실제 제작본 기반. 크기 작고 레이아웃 간결. 기본값.
+    "default": {
+        "problem": "leet_ra/templates/시대인재_문제지_빈.hwpx",
+        "solution": "leet_ra/templates/시대인재_해설지_빈.hwpx",
+    },
+    # 전국 모의고사 양식 — 전국_문제지.hwpx 에서 본문만 비운 것 + 공용 해설지
+    "jeonguk": {
+        "problem": "leet_ra/templates/전국_문제지_빈.hwpx",
+        "solution": "leet_ra/templates/전국서바_해설지_빈.hwpx",
+    },
+    # 서바이벌 모의고사 양식 — 서바_문제지.hwpx 기반
+    "serva": {
+        "problem": "leet_ra/templates/서바_문제지_빈.hwpx",
+        "solution": "leet_ra/templates/전국서바_해설지_빈.hwpx",
+    },
 }
+
+# 하위 호환
+DEFAULT_TEMPLATES = FORMAT_TEMPLATES["default"]
 
 
 # ------------------------ 유틸 ------------------------
@@ -151,8 +169,15 @@ def render_problem(doc: HwpxDocument, q: dict[str, Any], style_map: dict[str, in
     doc.add_paragraph("")
 
 
-def build_problem_hwpx(out_path: Path, title: str, questions: list[dict[str, Any]]) -> Path:
-    template_path = Path(DEFAULT_TEMPLATES["problem"])
+def build_problem_hwpx(
+    out_path: Path,
+    title: str,
+    questions: list[dict[str, Any]],
+    *,
+    template_override: Path | None = None,
+    format_name: str = "default",
+) -> Path:
+    template_path = template_override or Path(FORMAT_TEMPLATES[format_name]["problem"])
     if not template_path.exists():
         raise FileNotFoundError(f"문제지 템플릿 없음: {template_path}")
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -204,8 +229,15 @@ def render_solution(doc: HwpxDocument, q: dict[str, Any], style_map: dict[str, i
     doc.add_paragraph("")
 
 
-def build_solution_hwpx(out_path: Path, title: str, questions: list[dict[str, Any]]) -> Path:
-    template_path = Path(DEFAULT_TEMPLATES["solution"])
+def build_solution_hwpx(
+    out_path: Path,
+    title: str,
+    questions: list[dict[str, Any]],
+    *,
+    template_override: Path | None = None,
+    format_name: str = "default",
+) -> Path:
+    template_path = template_override or Path(FORMAT_TEMPLATES[format_name]["solution"])
     if not template_path.exists():
         raise FileNotFoundError(f"해설지 템플릿 없음: {template_path}")
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -240,6 +272,18 @@ def main() -> int:
     ap.add_argument("--title", "-t", default="LEET 추리논증 문제지", help="문서 제목")
     ap.add_argument("--problem-only", action="store_true", help="문제지만 생성")
     ap.add_argument("--solution-only", action="store_true", help="해설지만 생성")
+    ap.add_argument(
+        "--format", "-f", choices=sorted(FORMAT_TEMPLATES.keys()), default="default",
+        help="양식 선택: default(26추리) | jeonguk(전국 모의고사) | serva(서바이벌)",
+    )
+    ap.add_argument(
+        "--problem-template", default=None,
+        help="문제지 템플릿 직접 지정 (hwpx). --format보다 우선.",
+    )
+    ap.add_argument(
+        "--solution-template", default=None,
+        help="해설지 템플릿 직접 지정 (hwpx). --format보다 우선.",
+    )
     args = ap.parse_args()
 
     src = Path(args.input)
@@ -254,16 +298,27 @@ def main() -> int:
         else (prob_path.with_name(prob_path.stem + "_해설.hwpx") if prob_path else None)
     )
 
+    prob_tpl = Path(args.problem_template) if args.problem_template else None
+    sol_tpl = Path(args.solution_template) if args.solution_template else None
+
     if not args.solution_only:
         if prob_path is None:
-            prob_path = Path("output/문제지.hwpx")
-        build_problem_hwpx(prob_path, args.title, qs)
-        print(f"[ok] 문제지 → {prob_path}  ({len(qs)} 문항, {prob_path.stat().st_size} bytes)")
+            prob_path = Path(f"output/문제지_{args.format}.hwpx")
+        build_problem_hwpx(
+            prob_path, args.title, qs,
+            template_override=prob_tpl,
+            format_name=args.format,
+        )
+        print(f"[ok] 문제지({args.format}) → {prob_path}  ({len(qs)} 문항, {prob_path.stat().st_size} bytes)")
     if not args.problem_only:
         if sol_path is None:
-            sol_path = Path("output/해설지.hwpx")
-        build_solution_hwpx(sol_path, args.title, qs)
-        print(f"[ok] 해설지 → {sol_path}  ({len(qs)} 문항, {sol_path.stat().st_size} bytes)")
+            sol_path = Path(f"output/해설지_{args.format}.hwpx")
+        build_solution_hwpx(
+            sol_path, args.title, qs,
+            template_override=sol_tpl,
+            format_name=args.format,
+        )
+        print(f"[ok] 해설지({args.format}) → {sol_path}  ({len(qs)} 문항, {sol_path.stat().st_size} bytes)")
 
     return 0
 
