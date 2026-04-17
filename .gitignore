@@ -1,0 +1,20 @@
+.omc/sessions/
+.omc/state/
+.omc/logs/
+.omc/notepad.md
+.omc/project-memory.json
+
+*.hwp
+*.pdf
+
+.DS_Store
+node_modules/
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+
+# 대용량 원본 자료 (별도 관리)
+leet_unzipped/
+leet_package.zip
+*.zip

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(leet_ra/**)",
+      "Read(samples/**)",
+      "Glob(**)",
+      "Grep(**)"
+    ],
+    "deny": []
+  }
+}
