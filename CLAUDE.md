@@ -33,6 +33,7 @@ v1.5 기반.
 | "검수", "리뷰", "review" | **ra-review** | `leet_ra/prompts/review.md` | `opus` | `Agent(name="ra-review", model="opus", mode="auto")` |
 | "풀 파이프라인", "세트 만들어줘", "pipeline" | sourcer → analyze → design → review | 위 4개 순차 | `opus` | 순차 spawn. 각 단계 출력을 다음에 전달 |
 | "법 N문항", "인문 N문항", "40문항" | **ra-sourcer** (세트 모드) | `leet_ra/prompts/sourcer.md` | `opus` | 영역별 반복 spawn. 중복 방지 리스트 포함 |
+| "hwpx로", "한글로 출력", "문제지로 뽑아", "export" | **ra-exporter** | `leet_ra/exporter/export_hwpx.py` + `export_docx.py` | `-` (쉘 실행) | review ✅ 이후 Bash로 Python 스크립트 실행 |
 
 ### 위임 프로토콜
 

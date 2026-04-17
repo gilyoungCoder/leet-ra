@@ -18,3 +18,7 @@ __pycache__/
 leet_unzipped/
 leet_package.zip
 *.zip
+
+# exporter 생성물
+output/
+!output/.gitkeep

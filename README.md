@@ -219,6 +219,7 @@ OMC가 자연어를 인식하고 자동으로 해당 에이전트를 opus로 spa
 /project:design                   → 발문 + 선지 + 해설 설계
 /project:review                   → 교차 검수
 /project:pipeline [소재/지문]     → 풀 파이프라인
+/project:export [JSON/제목]       → hwpx + docx 출력
 ```
 
 ---
@@ -304,6 +305,29 @@ analyze 데이터로 발문 + 선지 + 해설을 설계.
 - W코드 다변화 (같은 W코드 반복 금지)
 - 역풀이 정답 유일성 자가 검증
 - 기출 전형 발문 그대로 사용 (변형 금지)
+
+### ra-exporter — 한글 파일 출력기
+
+review ✅ 통과한 문항 JSON을 **hwpx(한컴오피스)** 와 **docx(워드)** 로 출력합니다.
+
+- `leet_ra/exporter/export_hwpx.py` — OWPML 최소 구조로 hwpx 생성 (한컴에서 바로 열림)
+- `leet_ra/exporter/export_docx.py` — python-docx 2단 레이아웃 생성 (한컴에서 "다른 이름으로 저장 → HWP" 가능)
+- 출력 디렉터리: `output/` (gitignore 대상 — 생성물은 커밋 X)
+
+**자연어 트리거**: "hwpx로 뽑아줘", "한글로 출력", "문제지 만들어줘"
+**슬래시 커맨드**: `/project:export`
+
+```bash
+# 수동 실행 예시
+python3 leet_ra/exporter/export_hwpx.py \
+  -i samples/v2_5questions.json \
+  -o output/v2_문제지.hwpx \
+  -t "LEET-RA 연습 1회"
+```
+
+**⚠️ 주의**: hwpx는 OWPML 최소 구조라 시대인재 양식의 스타일(폰트/여백/2단 컬럼/표 테두리)까지는 자동 재현되지 않습니다. 완벽 재현을 원하면 한컴에서 시대인재 .hwp 하나를 .hwpx로 변환한 파일을 `leet_ra/templates/`에 배치하고 exporter를 템플릿 치환 모드로 확장하는 후속 작업이 필요합니다 (향후 과제).
+
+---
 
 ### ra-review (Agent C v1.5) — 독립 검수
 
