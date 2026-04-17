@@ -1,20 +1,30 @@
 LEET 추리논증 선지 설계 (Agent B v1.5)
 
-Agent A의 분석 결과를 입력받아 발문 + 5지선다(또는 ㄱㄴㄷ) + 해설을 설계한다.
+**OMC 전제.** 이 커맨드는 `ra-design` OMC 스킬을 통해 opus 서브에이전트를 spawn한다.
 
-## 실행 방법
-1. `leet_ra/prompts/design.md` 파일을 읽고 그 규칙과 출력 형식을 **완전히** 따른다.
-2. 이전 대화의 analyze 출력을 입력으로 사용한다.
-3. 선지 구성 규칙(choice_logic_analysis.json의 16개 규칙)과 W코드(w_codes_merged.json의 21개)를 기준으로 삼는다.
+## 실행 지시
 
-## 확인 사항
-- 출제 포인트 전량 소모 (미소모 = 설계 결함)
-- 매력도 하 선지 0개 (Rule 4 절대)
-- 오답 W코드 2~3종 이상 다변화
-- 역풀이 정답 유일성 통과
-- 모든 선지 근거가 지문 내 (배경지식만으로 풀리는 선지 금지)
-- 패러프레이징 준수 (2~3어절 이상 동일 인용 금지, Rule 16)
-- 발문은 기출 전형 발문 그대로 사용 (변형 금지)
+`.omc/skills/ra-design/SKILL.md` Workflow를 그대로 따른다:
+
+1. Read `leet_ra/prompts/design.md`
+2. **analyze 출력에서 W코드 후보 추출** (3~6개)
+3. **타깃 RAG 주입**:
+   - `leet_ra/data/w_codes_merged.json` → 각 W코드 후보의 `examples` 2개씩 (2025 우선) — 약 8~10 few-shot
+     - 필드: passage_excerpt, choice_text, w_code, error_pattern, official_explanation
+   - `leet_ra/data/choice_logic_analysis.json`:
+     - `choice_construction_rules` 16개 **전체**
+     - `attractiveness_patterns` 11개 (w_codes_related 겹치는 패턴의 examples 우선)
+     - `correct_choice_patterns` 7개 메타
+   - `leet_ra/data/2025_merged.json` → 동일 leet_type 문항 1개의 발문/선지 구조 참조
+4. `Agent(name="ra-design", model="opus", mode="auto", prompt=...)` spawn
+5. 결과를 사용자에게 전달. 이후 ra-review를 **반드시 독립 세션**에서 spawn.
+
+## 지시 원칙
+
+- **W코드 21종 전체를 뿌리지 않는다.** analyze 후보에만 타깃 주입.
+- Rule 4 (매력도 하 금지), Rule 16 (패러프레이징) 절대.
+- W코드 다변화 (한 문항 내 2~3종 이상).
+- 역풀이 정답 유일성 자가 검증.
 
 ## 분석 결과
 
