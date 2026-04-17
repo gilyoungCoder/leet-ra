@@ -110,12 +110,20 @@ Claude Code 실행 후 아래가 보이면 성공:
 
 ---
 
-## 3단계: 이 레포 클론
+## 3단계: 이 레포 클론 + 원샷 셋업
 
 ```bash
 git clone https://github.com/gilyoungCoder/leet-ra.git
 cd leet-ra
+bash setup.sh    # pip install + 샘플 hwpx 생성 테스트까지 자동
 ```
+
+`setup.sh`가 하는 일:
+1. `pip install -r requirements.txt` (python-hwpx, hwpx-mcp-server, python-docx)
+2. 의존성 검증 (import + 실행 파일 경로)
+3. `samples/v2_5questions.json` → `output/setup_test.hwpx` 샘플 생성
+
+성공하면 `claude` 실행 시 `.mcp.json`의 hwpx MCP 서버가 자동 등록되어 **한글 출력이 전부 작동**합니다.
 
 ### 레포 구조
 
@@ -347,7 +355,21 @@ python3 leet_ra/exporter/export_hwpx.py \
 - `HwpxDocument.open().export_text()` readback 9,675자 정상 추출
 - 한컴오피스에서 바로 열림 (python-hwpx는 Open XML 표준 준수)
 
-**⚠️ 주의**: hwpx는 빈 템플릿 기반으로 생성되므로 시대인재 양식의 스타일(폰트/여백/2단 컬럼/표 테두리)까지는 자동 재현되지 않습니다. 완벽 재현을 원하면 시대인재 .hwp 하나를 한컴에서 .hwpx로 변환한 파일을 `leet_ra/templates/시대인재_문제지.hwpx`로 배치하고, MCP 도구 `search_and_replace` / `fill_by_path`로 슬롯 치환하는 방식으로 확장하세요.
+#### 현재 반영/미반영 범위 (솔직 체크)
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| 문항 논리 구조 (지문/보기/선지/해설) | ✅ 반영 | python-hwpx로 한컴 호환 hwpx 생성 |
+| 기출 few-shot RAG (2024/2025, W코드 21종) | ✅ 반영 | 각 에이전트 spawn 시 자동 주입 |
+| **시대인재 양식 스타일 (폰트/여백/2단 컬럼/표 테두리)** | ❌ **미반영** | `데이터/시대인재/*.hwp` 전부 바이너리 → Linux에서 읽기 불가. 한컴에서 .hwpx 변환 1회 필요 |
+| **교열 매뉴얼 (`[교열] 시대인재 LEET팀 업무 매뉴얼_추리논증.ver.hwp`)** | ❌ **미반영 (의도적)** | 승규님 카톡 지침: "내부에 교열 담당자 따로 있어서 굳이 신경 쓸 필요 없어보입니다" |
+
+#### 시대인재 양식 완벽 재현 경로 (요청 시)
+
+시대인재 .hwp 중 하나(예: `26추리_서바 13_문제.hwp`)를 한컴에서 **"다른 이름으로 저장 → HWPX"** 한 번만 해서 `leet_ra/templates/시대인재_문제지.hwpx` 로 커밋하시면:
+- MCP 도구 `search_and_replace` / `fill_by_path` / `set_table_cell_text` 로 슬롯 치환
+- 스타일(폰트/여백/2단/표 테두리) 완전 유지
+- 10분 분량의 추가 스크립트 작업으로 적용 가능
 
 ---
 

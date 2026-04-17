@@ -1,0 +1,4 @@
+# LEET-RA exporter + MCP 서버 의존성
+python-hwpx>=2.6
+hwpx-mcp-server>=2.2.5
+python-docx>=1.0
