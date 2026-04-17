@@ -318,10 +318,11 @@ analyze 데이터로 발문 + 선지 + 해설을 설계.
 
 review ✅ 통과한 문항 JSON을 **hwpx(한컴오피스)** 와 **docx(워드)** 로 출력합니다. 두 경로 지원:
 
-#### 경로 1: 배치 출력 (기본)
-- `leet_ra/exporter/export_hwpx.py` — **python-hwpx** 기반 hwpx 생성 (한컴에서 바로 열림)
-- `leet_ra/exporter/export_docx.py` — python-docx 2단 레이아웃 생성
-- 출력 디렉터리: `output/` (gitignore 대상 — 생성물은 커밋 X)
+#### 경로 1: 배치 출력 (기본, 시대인재 템플릿 기반)
+- `leet_ra/exporter/export_hwpx.py` — **시대인재 양식 hwpx 템플릿**(`leet_ra/templates/문제지_템플릿.hwpx`, `해설지_템플릿.hwpx`)을 복제 → 본문 XML 비우기 → 시대인재 등록 스타일명(`문제`, `선택지`, `보기박스`, `보기내용(내어쓰기)`, `지문 (테두리)`, `문항번호`, `정답_10pt`, `해시태그`, `정오판단_설명` 등)으로 문단 삽입
+- 교열 매뉴얼 자동 반영: **묶음 빈 칸(U+2060)** 문항번호↔발문, 선지기호↔내용, ㄱㄴㄷ↔내용
+- `leet_ra/exporter/export_docx.py` — python-docx 2단 레이아웃 대체 출력
+- 출력 디렉터리: `output/` (gitignore 대상)
 
 #### 경로 2: HWPX MCP 서버 (인터랙티브 편집)
 - 레포 루트의 `.mcp.json`에 등록된 `hwpx` MCP 서버가 **33개 도구**를 노출
