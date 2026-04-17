@@ -41,8 +41,8 @@ U_NBSP = "\u00A0"          # 고정폭 빈 칸 (Alt+Space 대응)
 CHOICE_MARKS = ("①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩")
 
 DEFAULT_TEMPLATES = {
-    "problem": "leet_ra/templates/문제지_템플릿.hwpx",
-    "solution": "leet_ra/templates/해설지_템플릿.hwpx",
+    "problem": "leet_ra/templates/시대인재_문제지_빈.hwpx",
+    "solution": "leet_ra/templates/시대인재_해설지_빈.hwpx",
 }
 
 
@@ -79,16 +79,10 @@ def load_questions(src: Path) -> list[dict[str, Any]]:
 
 
 def clean_body(doc: HwpxDocument) -> None:
-    """모든 섹션의 body(표·문단 포함)를 XML 수준에서 비운다.
-    python-hwpx의 delete_paragraph는 최상위 단락만 다루므로, 표 내부 셀 문단이
-    많은 시대인재 템플릿에는 부족하다. lxml Element를 통해 section 하위를 통째로 비운다.
-    """
-    for sec in doc.sections:
-        elem = sec.element
-        for child in list(elem):
-            elem.remove(child)
-        if hasattr(sec, "mark_dirty"):
-            sec.mark_dirty()
+    """더 이상 사용하지 않음. 빈 템플릿(시대인재_*_빈.hwpx)은 이미 텍스트가 비워져 있고
+    레이아웃(표·2단 컬럼·바탕쪽·헤더)만 유지된 상태이므로, 섹션 children을 제거하지 않고
+    그대로 사용한다. 이 함수는 하위 호환용 no-op."""
+    return
 
 
 def compose_stem_line(qno: Any, stem: str) -> str:
