@@ -306,13 +306,29 @@ analyze 데이터로 발문 + 선지 + 해설을 설계.
 - 역풀이 정답 유일성 자가 검증
 - 기출 전형 발문 그대로 사용 (변형 금지)
 
-### ra-exporter — 한글 파일 출력기
+### ra-exporter — 한글 파일 출력기 (python-hwpx + MCP 서버)
 
-review ✅ 통과한 문항 JSON을 **hwpx(한컴오피스)** 와 **docx(워드)** 로 출력합니다.
+review ✅ 통과한 문항 JSON을 **hwpx(한컴오피스)** 와 **docx(워드)** 로 출력합니다. 두 경로 지원:
 
-- `leet_ra/exporter/export_hwpx.py` — OWPML 최소 구조로 hwpx 생성 (한컴에서 바로 열림)
-- `leet_ra/exporter/export_docx.py` — python-docx 2단 레이아웃 생성 (한컴에서 "다른 이름으로 저장 → HWP" 가능)
+#### 경로 1: 배치 출력 (기본)
+- `leet_ra/exporter/export_hwpx.py` — **python-hwpx** 기반 hwpx 생성 (한컴에서 바로 열림)
+- `leet_ra/exporter/export_docx.py` — python-docx 2단 레이아웃 생성
 - 출력 디렉터리: `output/` (gitignore 대상 — 생성물은 커밋 X)
+
+#### 경로 2: HWPX MCP 서버 (인터랙티브 편집)
+- 레포 루트의 `.mcp.json`에 등록된 `hwpx` MCP 서버가 **33개 도구**를 노출
+- `create_document`, `add_table`, `search_and_replace`, `fill_by_path`, `find_cell_by_label` 등
+- Claude가 자연어로 문서 조작 가능: "3번 문항 해설 바꿔줘", "표 셀 내용 수정해줘"
+
+#### 설치
+
+```bash
+pip install python-hwpx hwpx-mcp-server
+```
+
+`.mcp.json`이 레포 루트에 있으므로 `claude` 실행 시 자동 등록됩니다. 도구 prefix: `mcp__hwpx__*`.
+
+#### 사용
 
 **자연어 트리거**: "hwpx로 뽑아줘", "한글로 출력", "문제지 만들어줘"
 **슬래시 커맨드**: `/project:export`
@@ -325,7 +341,13 @@ python3 leet_ra/exporter/export_hwpx.py \
   -t "LEET-RA 연습 1회"
 ```
 
-**⚠️ 주의**: hwpx는 OWPML 최소 구조라 시대인재 양식의 스타일(폰트/여백/2단 컬럼/표 테두리)까지는 자동 재현되지 않습니다. 완벽 재현을 원하면 한컴에서 시대인재 .hwp 하나를 .hwpx로 변환한 파일을 `leet_ra/templates/`에 배치하고 exporter를 템플릿 치환 모드로 확장하는 후속 작업이 필요합니다 (향후 과제).
+#### 검증 (이 레포에서 실제 테스트됨)
+
+- `samples/v2_5questions.json` (5문항) → `output/leet_v2_real.hwpx` (15.5KB)
+- `HwpxDocument.open().export_text()` readback 9,675자 정상 추출
+- 한컴오피스에서 바로 열림 (python-hwpx는 Open XML 표준 준수)
+
+**⚠️ 주의**: hwpx는 빈 템플릿 기반으로 생성되므로 시대인재 양식의 스타일(폰트/여백/2단 컬럼/표 테두리)까지는 자동 재현되지 않습니다. 완벽 재현을 원하면 시대인재 .hwp 하나를 한컴에서 .hwpx로 변환한 파일을 `leet_ra/templates/시대인재_문제지.hwpx`로 배치하고, MCP 도구 `search_and_replace` / `fill_by_path`로 슬롯 치환하는 방식으로 확장하세요.
 
 ---
 

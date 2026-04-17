@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "hwpx": {
+      "command": "hwpx-mcp-server",
+      "args": ["--transport", "stdio"],
+      "env": {}
+    }
+  }
+}
